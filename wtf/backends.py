@@ -5,7 +5,7 @@ import os
 import ruamel.yaml
 
 
-class HyraBackend(object):
+class WTFBackend(object):
 
     def __init__(self, path):
         self.path = path
@@ -14,7 +14,7 @@ class HyraBackend(object):
         raise NotImplemented("This must return a dict")
 
 
-class YAMLBackend(HyraBackend):
+class YAMLBackend(WTFBackend):
     def load(self):
         path = os.path.join("data", self.path)
 
@@ -26,7 +26,7 @@ class YAMLBackend(HyraBackend):
         return
 
 
-class JSONBackend(HyraBackend):
+class JSONBackend(WTFBackend):
     def load(self):
         path = os.path.join("data", self.path)
 
