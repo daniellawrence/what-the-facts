@@ -1,0 +1,128 @@
+<html>
+  <head>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+  </head>
+  <body>
+    <div style="width: 90%;margin-left: 5%;">
+
+      <h1>What the Facts!?</h1>
+      <Hr />
+
+      <div class="row">
+        <div class="col-2">
+	  <h3>Fetcher</h3>
+
+	  <div class="form-group">
+	    <label for="exampleInputlookup_key1">lookup_key</label>
+	    <input type="text" class="form-control" id="lookup_key" name="lookup_key" placeholder="Enter lookup_key">
+
+	  </div>
+
+	  <h3>Facts</h3>
+	  <div class="form-group">
+
+	    {% for key in ["app_name", "site", "hostname", "environment", "os_family"] %}
+	    <label for="exampleInput{{key}}1">{{key}}</label>
+	    <input type="text" class="form-control" id="{{key}}" name="{{key}}" placeholder="Enter {{key}}">
+	    {% endfor %}
+	  </div>
+	  <button name="debug" id="debug" class="btn btn-danger">Debug</button>
+	  <button name="dump" id="dump" class="btn btn-danger">Dump</button>
+	  <button name="fetch" id="fetch" class="btn btn-primary">Fetch</button>
+	</div>
+	<div class="col-6">
+	  <h3>debug data from API</h3>
+	  <pre id="result" name="result" class="prettyprint lang-py"></pre>
+	  <h3>meta</h3>
+	  <pre id="meta" name="meta" class="prettyprint lang-css"></pre>
+	</div>
+
+	<div class="col-4">
+
+	  <ul id="backends"></ul>
+	</div>
+
+
+	<script>
+	 $('#dump').click(function() {
+	   {% for key in ["app_name", "site", "hostname", "environment", "os_family"] %}
+	   {{key}} = $("#{{key}}").val();
+	   {% endfor %}
+	   console.log(app_name, site, hostname, environment, os_family);
+	   $.getJSON("/dump", {
+	     "app_name": app_name,
+	     "site": site,
+	     "hostname": hostname,
+	     "environment": environment,
+	     "os_family": os_family
+	   }, function(data){
+
+	     $("#backends").text('');
+	     for (var i=0; i < data.meta.sources.length; i++) {
+	       path = data.meta.sources[i][1];
+
+
+	       $("#backends").append(
+		 "<li><a href='/raw/" + encodeURIComponent(path) + "'>" + encodeURI(path) + "</a></li>"
+	       );
+	     }
+	     $("#result").text(JSON.stringify(data, null, 2));
+	   });
+	 });
+
+	 $('#debug').click(function() {
+	   {% for key in ["app_name", "site", "hostname", "environment", "os_family"] %}
+	   {{key}} = $("#{{key}}").val();
+	   {% endfor %}
+	   console.log(app_name, site, hostname, environment, os_family);
+	   $.getJSON("/debug", {
+	     "app_name": app_name,
+	     "site": site,
+	     "hostname": hostname,
+	     "environment": environment,
+	     "os_family": os_family
+	   }, function(data){
+	     $("#backends").text('');
+	     for (var i=0; i < data.applied_hierachy.length; i++) {
+	       path = data.applied_hierachy[i];
+	       $("#backends").append(
+		 "<a href='/raw/" + encodeURIComponent(path) + "'><li>" + encodeURI(path) + "</li>"
+	       );
+	     }
+
+	     $("#result").text(JSON.stringify(data, null, 2));
+	   });
+	 });
+	 $('#fetch').click(function() {
+	   {% for key in ["app_name", "site", "hostname", "environment", "os_family"] %}
+	   {{key}} = $("#{{key}}").val();
+	   {% endfor %}
+	   console.log(app_name, site, hostname, environment, os_family);
+	   $.getJSON("/fetch/" + $("#lookup_key").val() + "/", {
+	     "app_name": app_name,
+	     "site": site,
+	     "hostname": hostname,
+	     "environment": environment,
+	     "os_family": os_family
+	   }, function(data){
+	     $("#backends").text('');
+	     for (var i=0; i < data.meta.sources.length; i++) {
+	       path = data.meta.sources[i][1];
+	       $("#backends").append(
+		 "<a href='/raw/" + encodeURIComponent(path) + "'><li>" + encodeURI(path) + "</li>"
+	       );
+	     }
+
+	     meta = data['meta'];
+	     delete data["meta"];
+	     $("#result").text(JSON.stringify(data, null, 2));
+	     $("#meta").text(JSON.stringify(meta, null, 2));
+	   });
+	 });
+	</script>
+      </div>
+  </body>
+</html>

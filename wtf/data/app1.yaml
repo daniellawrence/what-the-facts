@@ -1,0 +1,6 @@
+---
+mysql:
+  user: app1
+  database: app1
+
+workers: 10

@@ -1,0 +1,10 @@
+---
+login_as_root: False
+
+default_packages:
+  - ldapclient
+  - sudo
+  - python36
+
+pip_version: 9.0.1
+python_version: 3.6
