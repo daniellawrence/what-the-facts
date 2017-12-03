@@ -46,104 +46,152 @@ class WTF(object):
         self.hierachy_keys = keys
 
     def dump(self, **filter_data):
-        instance_hierachy = list(reversed(list(self.filtered_hierachy(filter_data))))
+        applied_hierachy = list(self.filtered_hierachy(filter_data))
         merged_data = {}
-        sources = []
+        sources = set()
         
-        for source in instance_hierachy:
+        for source in reversed(applied_hierachy):
             response = self.backend_proxy(source)
             if response:
-                sources.append((True, source))
+                sources.add(source)
                 merged_data.update(response)
-            else:
-                sources.append((False, source))
 
         return WTFResponse(merged_data, {
-            'instastance_hierachy': instance_hierachy,
-            'sources': sources,
+            'applied_hierachy': applied_hierachy,
+            'sources': list(sources),
 
         })
 
-    def fetch(self, lookup, **filter_data):
-        instance_hierachy = list(self.filtered_hierachy(filter_data))
-        sources = []
-        data = None
-        
-        for source in instance_hierachy:
-            response = self.backend_proxy(source)
-            if not response:
-                sources.append((False, source))
-                continue
-                
-            if lookup in response:
-                sources.append((True, source))
-                data = response.get(lookup)
-                break
+    def fetch(self, lookup_list, **filter_data):
+
+        if not isinstance(lookup_list, list):
+            lookup_list = [lookup_list]
             
-            sources.append((False, source))
+        applied_hierachy = list(self.filtered_hierachy(filter_data))
+        sources = set()
+        data = {}
+
+        for key in lookup_list:
+            key_data, key_sources = self.find_first(key, applied_hierachy)
+            data.update(key_data)
+            sources.update(key_sources)
 
         return WTFResponse(
             data,
             {
-                'instastance_hierachy': instance_hierachy,
-                'sources': sources,
+                'applied_hierachy': applied_hierachy,
+                'sources': list(sources),
                 'filter': filter_data
             }
         )
-
-
-    def fetch_list(self, lookup, **filter_data):
-        instance_hierachy = list(self.filtered_hierachy(filter_data))
-        sources = []
-        merged_data = []
         
-        for source in instance_hierachy:
+
+    def find_first(self, lookup_key, applied_hierachy):
+        sources = set()
+        data = {lookup_key: None}
+        
+        for source in applied_hierachy:
             response = self.backend_proxy(source)
             if not response:
-                sources.append((False, source))
                 continue
                 
-            if lookup in response:
-                sources.append((True, source))
-                merged_data.append(response.get(lookup))
-            else:
-                sources.append((False, source))
+            if lookup_key in response:
+                sources.add(source)
+                data = {lookup_key: response.get(lookup_key)}
+                break
+
+        return data, sources
+
+    def find_list(self, lookup_key, applied_hierachy):
+        sources = set()
+        data = {lookup_key: []}
+
+        for source in applied_hierachy:
+            response = self.backend_proxy(source)
+            if not response:
+                continue
+                
+            if lookup_key in response:
+                sources.add(source)
+                value = response.get(lookup_key, [])
+                if not isinstance(value, list):
+                    # raise ValueError("{} from {} is not a list".format(lookup_key, source))
+                    value = [value]
+                data[lookup_key] += value
+
+        return data, sources
+
+    def find_dict(self, lookup_key, applied_hierachy):
+        sources = set()
+        data = {lookup_key: {}}
+
+        for source in applied_hierachy:
+            response = self.backend_proxy(source)
+            if not response:
+                continue
+                
+            if lookup_key in response:
+                sources.add(source)
+                value = response.get(lookup_key, {})
+                if not isinstance(value, dict):
+                    raise ValueError("{} from {} is not a Dict".format(lookup_key, source))
+                data[lookup_key].update(value)
+
+        return data, sources
+
+
+    def fetch_list(self, lookup_list, **filter_data):        
+        if not isinstance(lookup_list, list):
+            lookup_list = [lookup_list]
+            
+        applied_hierachy = list(self.filtered_hierachy(filter_data))
+        sources = set()
+        data = {}
+        errors = []
+
+        for key in lookup_list:
+            try:
+                key_data, key_sources = self.find_list(key, applied_hierachy)
+            except ValueError as error:
+                errors.append(str(error))
+                continue
+            
+            data.update(key_data)
+            sources.update(key_sources)
 
         return WTFResponse(
-            merged_data,
+            data,
             {
-                'instastance_hierachy': instance_hierachy,
-                'sources': sources,
+                'applied_hierachy': applied_hierachy,
+                'sources': list(sources),
+                'filter': filter_data,
+                'errors': errors
             }
         )
 
+    def fetch_merge(self, lookup_list, **filter_data):
+        applied_hierachy = list(self.filtered_hierachy(filter_data))
+        sources = set()
+        data = {}
+        errors = []
 
-    def fetch_merge(self, lookup, **filter_data):
-        instance_hierachy = list(reversed(list(self.filtered_hierachy(filter_data))))
-        sources = []
-        merged_data = {}
-        
-        for source in instance_hierachy:
-            response = self.backend_proxy(source)
-            if not response:
-                sources.append((False, source))
+        for key in lookup_list:
+            try:
+                key_data, key_sources = self.find_list(key, applied_hierachy)
+            except ValueError as error:
+                errors.append(str(error))
                 continue
-                
-            if lookup in response:
-                response = response.get(lookup)
-                if isinstance(response, dict):
-                    sources.append((True, source))
-                    merged_data.update(response)
-                else:
-                    raise ValueError('{}/{} must be a dict'.format(source, lookup))
-            else:
-                sources.append((False, source))
+            
+            data.update(key_data)
+            sources.update(key_sources)
 
         return WTFResponse(
-            merged_data,
+            data,
             {
-                'instastance_hierachy': instance_hierachy,
-                'sources': sources,
+                'applied_hierachy': applied_hierachy,
+                'sources': list(sources),
+                'filter': filter_data,
+                'errors': errors,
             }
         )
 
@@ -187,14 +235,13 @@ class WTF(object):
 
 c = {
     'hierachy': [
-        'json://hostname/{hostname}.json',
         'yaml://hostname/{hostname}.yaml',
-        'yaml://app_name/{app_name}/environment/{environment}.yaml',
-        'yaml://app_name/{app_name}/site/{site}.yaml',
-        'yaml://app_name/{app_name}.yaml',
-        'yaml://{environment}.yaml',
-        'yaml://{site}.yaml',
-        'yaml://{os_family}.yaml',
+        'yaml://app/{app_name}/env/{environment}.yaml',
+        'yaml://app/{app_name}/site/{site}.yaml',
+        'yaml://app/{app_name}.yaml',
+        'yaml://env/{environment}.yaml',
+        'yaml://site/{site}.yaml',
+        'yaml://os/{os_family}.yaml',
         'yaml://base.yaml'
     ]
 }

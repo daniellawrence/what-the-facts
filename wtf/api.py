@@ -12,7 +12,10 @@ h = WTF(c)
 class JSONEncoder(BaseEncoder):
     def default(self, o):
         if isinstance(o, WTFResponse):
-            return o.data
+            d = o.data
+            d['_meta'] = o.metadata
+            return d
+        
         if isinstance(o, set):
             return list(o)
 
@@ -49,49 +52,43 @@ def keys():
         'keys': list(h.hierachy_keys),
         'applied_hierachy': list(h.filtered_hierachy(data_filter)),
         'filter_keys': set(data_filter.keys()),
-        'missing_keys': set(h.hierachy_keys) - set(data_filter.keys())
+        'missing_keys': set(h.hierachy_keys) - set(data_filter.keys()),
+        '_meta': {
+            'applied_hierachy': list(h.filtered_hierachy(data_filter)),
+        }
     })
 
 
 @app.route('/fetch/<lookup_key>/')
 def fetch(lookup_key):
+    lookup_keys = lookup_key.split(',')
+    
     data_filter = request.args
-    data = h.fetch(lookup_key, **data_filter)
-    return jsonify({
-        'lookup_key': lookup_key,
-        'value': data,
-        lookup_key: data,
-        'meta': data.metadata
-    })
+    response = h.fetch(lookup_keys, **data_filter)
+    return jsonify(response)
+
 
 @app.route('/fetch_list/<lookup_key>/')
 def fetch_list(lookup_key):
+    lookup_key = lookup_key.split(',')
+
     data_filter = request.args
-    data = h.fetch_list(lookup_key, **data_filter)
-    return jsonify({
-        'lookup_key': data,
-        'meta': data.metadata
-    })
+    response = h.fetch_list(lookup_key, **data_filter)
+    return jsonify(response)
 
 
 @app.route('/fetch_merge/<lookup_key>/')
 def fetch_merge(lookup_key):
     data_filter = request.args
-    data = h.fetch_merge(lookup_key, **data_filter)
-    return jsonify({
-        'lookup_key': data,
-        'meta': data.metadata
-    })
+    response = h.fetch_merge(lookup_key, **data_filter)
+    return jsonify(response)
 
 
 @app.route('/dump/')
 def dump():
     data_filter = request.args
-    data = h.dump(**data_filter)
-    return jsonify({
-        'lookup_key': data,
-        'meta': data.metadata
-    })
+    response = h.dump(**data_filter)
+    return jsonify(response)
 
 
 if __name__ == '__main__':

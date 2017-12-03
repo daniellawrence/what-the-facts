@@ -22,106 +22,125 @@
 	  </div>
 
 	  <h3>Facts</h3>
-	  <div class="form-group">
-
-	    {% for key in ["app_name", "site", "hostname", "environment", "os_family"] %}
-	    <label for="exampleInput{{key}}1">{{key}}</label>
-	    <input type="text" class="form-control" id="{{key}}" name="{{key}}" placeholder="Enter {{key}}">
-	    {% endfor %}
-	  </div>
+	  <form class="form-group" id="factform"></form>
 	  <button name="debug" id="debug" class="btn btn-danger">Debug</button>
 	  <button name="dump" id="dump" class="btn btn-danger">Dump</button>
 	  <button name="fetch" id="fetch" class="btn btn-primary">Fetch</button>
+	  <button name="fetch_list" id="fetch_list" class="btn btn-primary">Fetch List</button>
+	  <button name="refresh_form" id="refresh_form" class="btn btn-primary">Refresh Form</button>
 	</div>
 	<div class="col-6">
-	  <h3>debug data from API</h3>
+	  <h3>Response from API</h3>
+	  <p>All the data you requested.</p>
 	  <pre id="result" name="result" class="prettyprint lang-py"></pre>
 	  <h3>meta</h3>
 	  <pre id="meta" name="meta" class="prettyprint lang-css"></pre>
 	</div>
 
 	<div class="col-4">
-
+	  <h3>used sources</h3>
+	  <p>Where we got the answers from</p>
+	  <ul id="sources"></ul>
+	  <h3>source hierachy</h3>
+	  <p>Where we looked.</p>
 	  <ul id="backends"></ul>
 	</div>
 
 
 	<script>
-	 $('#dump').click(function() {
-	   {% for key in ["app_name", "site", "hostname", "environment", "os_family"] %}
-	   {{key}} = $("#{{key}}").val();
-	   {% endfor %}
-	   console.log(app_name, site, hostname, environment, os_family);
-	   $.getJSON("/dump", {
-	     "app_name": app_name,
-	     "site": site,
-	     "hostname": hostname,
-	     "environment": environment,
-	     "os_family": os_family
-	   }, function(data){
+	 $(document).ready(function() {
+	   writeForm();
+	 });
 
-	     $("#backends").text('');
-	     for (var i=0; i < data.meta.sources.length; i++) {
-	       path = data.meta.sources[i][1];
+	 $('#refresh_form').click(function() {
+	   writeForm();
+	 });
 
-
-	       $("#backends").append(
-		 "<li><a href='/raw/" + encodeURIComponent(path) + "'>" + encodeURI(path) + "</a></li>"
+	 function writeForm() {
+	   $("form").text('');
+	   $.getJSON("/debug", function(data) {
+	     for (var i=0; i < data.keys.length; i++) {
+	       key = data.keys[i];
+	       $("#factform").append(
+		 '<label for="exampleInput' + key + '1">' +
+		 key + '</label><input type="text" class="form-control" id="' +
+		 key + '" name="' + key + '">'
 	       );
 	     }
-	     $("#result").text(JSON.stringify(data, null, 2));
+	   });
+	 }
+
+	 function readForm() {
+	   var data = {};
+	   $("form").each(function() {
+	     $(this).find(':input').each(function(index) {
+	       input = $(this);
+	       name = input.attr('name');
+	       value = input.val();
+	       if (value != '') {
+		 data[name] = value;
+	       }
+	     });
+	   });
+	   return data;
+	 }
+
+	 function writeOutput(data) {
+	   meta = data['_meta'];
+	   delete data["_meta"];
+
+	   $("#backends").text('');
+	   $("#meta").text('');
+	   $("#result").text('');
+	   $("#sources").text('');
+
+	   $("#result").text(JSON.stringify(data, null, 2));
+	   $("#meta").text(JSON.stringify(meta, null, 2));
+
+	   for (var i=0; i < meta.sources.length; i++) {
+	     path = meta.sources[i];
+
+	     $("#sources").append(
+	       "<li>(" + i + ")<a href='/raw/" + encodeURIComponent(path) + "'>" + encodeURI(path) + "</a></li>"
+	     );
+	   }
+	   for (var i=0; i < meta.applied_hierachy.length; i++) {
+	     path = meta.applied_hierachy[i];
+
+	     $("#backends").append(
+	       "<li>(" + i + ")<a href='/raw/" + encodeURIComponent(path) + "'>" + encodeURI(path) + "</a></li>"
+	     );
+	   }
+	 }
+
+	 $('#dump').click(function() {
+	   form = readForm();
+	   $.getJSON("/dump", form, function(data){
+	     writeOutput(data)
 	   });
 	 });
 
 	 $('#debug').click(function() {
-	   {% for key in ["app_name", "site", "hostname", "environment", "os_family"] %}
-	   {{key}} = $("#{{key}}").val();
-	   {% endfor %}
-	   console.log(app_name, site, hostname, environment, os_family);
-	   $.getJSON("/debug", {
-	     "app_name": app_name,
-	     "site": site,
-	     "hostname": hostname,
-	     "environment": environment,
-	     "os_family": os_family
-	   }, function(data){
-	     $("#backends").text('');
-	     for (var i=0; i < data.applied_hierachy.length; i++) {
-	       path = data.applied_hierachy[i];
-	       $("#backends").append(
-		 "<a href='/raw/" + encodeURIComponent(path) + "'><li>" + encodeURI(path) + "</li>"
-	       );
-	     }
-
-	     $("#result").text(JSON.stringify(data, null, 2));
+	   form = readForm();
+	   $.getJSON("/debug", form, function(data){
+	     writeOutput(data)
 	   });
 	 });
+
 	 $('#fetch').click(function() {
-	   {% for key in ["app_name", "site", "hostname", "environment", "os_family"] %}
-	   {{key}} = $("#{{key}}").val();
-	   {% endfor %}
-	   console.log(app_name, site, hostname, environment, os_family);
-	   $.getJSON("/fetch/" + $("#lookup_key").val() + "/", {
-	     "app_name": app_name,
-	     "site": site,
-	     "hostname": hostname,
-	     "environment": environment,
-	     "os_family": os_family
-	   }, function(data){
-	     $("#backends").text('');
-	     for (var i=0; i < data.meta.sources.length; i++) {
-	       path = data.meta.sources[i][1];
-	       $("#backends").append(
-		 "<a href='/raw/" + encodeURIComponent(path) + "'><li>" + encodeURI(path) + "</li>"
-	       );
-	     }
-
-	     meta = data['meta'];
-	     delete data["meta"];
-	     $("#result").text(JSON.stringify(data, null, 2));
-	     $("#meta").text(JSON.stringify(meta, null, 2));
+	   form = readForm();
+	   $.getJSON("/fetch/" + $("#lookup_key").val() + "/", form, function(data){
+	     writeOutput(data)
 	   });
 	 });
+
+	 $('#fetch_list').click(function() {
+	   form = readForm();
+	   $.getJSON("/fetch_list/" + $("#lookup_key").val() + "/", form, function(data){
+	     writeOutput(data)
+	   });
+	 });
+
 	</script>
       </div>
   </body>
