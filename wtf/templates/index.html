@@ -32,6 +32,7 @@
 	<div class="col-6">
 	  <h3>Response from API</h3>
 	  <p>All the data you requested.</p>
+	  <p id="url" name="url"></p>
 	  <pre id="result" name="result" class="prettyprint lang-py"></pre>
 	  <h3>meta</h3>
 	  <pre id="meta" name="meta" class="prettyprint lang-css"></pre>
@@ -68,6 +69,14 @@
 	       );
 	     }
 	   });
+	 }
+
+	 function toQueryString(paramsObject) {
+	   return Object
+	     .keys(paramsObject)
+	     .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(paramsObject[key])}`)
+	     .join('&')
+	   ;
 	 }
 
 	 function readForm() {
@@ -115,6 +124,9 @@
 
 	 $('#dump').click(function() {
 	   form = readForm();
+	   url = "http://localhost:5000/dump/?" + toQueryString(form);
+	   $("#url").html("<a href='" + url + "'>" + url + "</a>");
+
 	   $.getJSON("/dump", form, function(data){
 	     writeOutput(data)
 	   });
@@ -122,6 +134,10 @@
 
 	 $('#debug').click(function() {
 	   form = readForm();
+
+	   url = "http://localhost:5000/debug/?" + toQueryString(form);
+	   $("#url").html("<a href='" + url + "'>" + url + "</a>");
+
 	   $.getJSON("/debug", form, function(data){
 	     writeOutput(data)
 	   });
@@ -129,6 +145,10 @@
 
 	 $('#fetch').click(function() {
 	   form = readForm();
+
+	   url = "http://localhost:5000/fetch/" + $("#lookup_key").val() + "/?" + toQueryString(form);
+	   $("#url").html("<a href='" + url + "'>" + url + "</a>");
+	   
 	   $.getJSON("/fetch/" + $("#lookup_key").val() + "/", form, function(data){
 	     writeOutput(data)
 	   });
@@ -136,6 +156,10 @@
 
 	 $('#fetch_list').click(function() {
 	   form = readForm();
+
+	   url = "http://localhost:5000/fetch_list/" + $("#lookup_key").val() + "/?" + toQueryString(form);
+	   $("#url").html("<a href='" + url + "'>" + url + "</a>");
+
 	   $.getJSON("/fetch_list/" + $("#lookup_key").val() + "/", form, function(data){
 	     writeOutput(data)
 	   });
